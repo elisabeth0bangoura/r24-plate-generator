@@ -50,7 +50,6 @@ function GlobalStyles() {
       .plate-card.leaving, .plate-view.leaving {
         animation: plate-out .18s ease both;
       }
-      /* Smooth size tweaks on the visual plate frame */
       .plate-view { transition: width .18s ease; }
       .plate-view > div { transition: width .18s ease, height .18s ease, padding .18s ease, border-radius .12s ease; }
 
@@ -65,17 +64,17 @@ function GlobalStyles() {
          Force light scheme + black text on mobile only.
          =========================== */
       @media (max-width: ${DESKTOP_MIN - 1}px) {
-        html, body { color-scheme: light; } /* stop dark form theming */
+        html, body { color-scheme: light; }
         input, select, textarea, button {
           color: #000 !important;
-          -webkit-text-fill-color: #000; /* iOS */
+          -webkit-text-fill-color: #000;
           background-color: #fff;
           caret-color: #000;
         }
         ::placeholder { color: #6B7280; opacity: 1; }
         input:-webkit-autofill {
           -webkit-text-fill-color: #000;
-          box-shadow: 0 0 0px 1000px #fff inset; /* keep white bg */
+          box-shadow: 0 0 0px 1000px #fff inset;
         }
       }
     `}</style>
@@ -381,7 +380,7 @@ function DimensionField({
               lastValidRef.current = text;
               onCommitCm(res.valueCm);
             } else {
-              setText(lastValidRef.current); // restore previous good value
+              setText(lastValidRef.current);
               setError(null);
             }
           }}
@@ -399,6 +398,16 @@ function DimensionField({
             outline: "none",
             background: "white",
             fontWeight: 800,
+
+            // ✅ Force black text on iOS while editing (mobile only)
+            ...(size === "mobile"
+              ? {
+                  color: "#000",
+                  WebkitTextFillColor: "#000",
+                  caretColor: "#000",
+                  backgroundColor: "#fff",
+                }
+              : {}),
           }}
           placeholder={`${minCm}–${maxCm}`}
           inputMode="decimal"
@@ -648,7 +657,6 @@ export default function App() {
   const stageH = Math.max(1, maxHeightCm);
 
   let sharedBgW = stageW, sharedBgH = stageH;
-  // center offsets (can be negative when image is smaller — keeps true center crop)
   let sharedCenterOffsetX = 0;
   let sharedCenterOffsetY = 0;
 
@@ -666,11 +674,9 @@ export default function App() {
     sharedCenterOffsetY = (sharedBgH - stageH) / 2;
   }
 
-  // symmetric pan limits
   const maxPanX = Math.abs(Math.round((sharedBgW - stageW) / 2));
   const maxPanY = Math.abs(Math.round((sharedBgH - stageH) / 2));
 
-  /* ======= Helpers: reorder for MOBILE ONLY UI */
   function movePlateIndex(from, to) {
     setPlates((arr) => {
       if (to < 0 || to >= arr.length) return arr;
@@ -681,7 +687,6 @@ export default function App() {
     });
   }
 
-  /* === Stage view === */
   const Stage = (
     <div
       id="stage-root"
@@ -708,7 +713,6 @@ export default function App() {
         {plates.map((p, idx) => {
           const xLeftCm = plates.slice(0, idx).reduce((acc, prev) => acc + prev.widthCm, 0) + idx * bgGap;
 
-          // element-scoped handlers only (no window listeners)
           const onPointerDown = (e) => {
             if (!motifUrl || !e.isPrimary) return;
             try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch {}
@@ -750,7 +754,6 @@ export default function App() {
             setActivePanId(null);
           };
 
-          // Always square image corners
           const corner = 0;
 
           if (needsMirror) {
@@ -802,7 +805,6 @@ export default function App() {
           const platePanX = clamp(p.panX || 0, -maxPanX, maxPanX);
           const platePanY = clamp(p.panY || 0, -maxPanY, maxPanY);
 
-          // center-based crop both axes
           const bgPosX = `${-(xLeftCm + sharedCenterOffsetX - platePanX)}px`;
           const bgPosY = `${-(sharedCenterOffsetY - platePanY)}px`;
 
@@ -997,7 +999,6 @@ export default function App() {
 
                 const leaving = leavingIds.has(p.id);
 
-                // MOBILE-ONLY: can move left/right?
                 const canMoveLeft = isMobile && idx > 0;
                 const canMoveRight = isMobile && idx < plates.length - 1;
 
@@ -1035,7 +1036,7 @@ export default function App() {
                   >
                     {isMobile && <div style={indexBadgeStyle(bubbleSize, isFirst)}>{idx + 1}</div>}
 
-                    {/* MOBILE-ONLY: delete pill (existing) */}
+                    {/* MOBILE-ONLY: delete pill */}
                     {isMobile && (
                       <button
                         onClick={(e) => {
@@ -1052,7 +1053,7 @@ export default function App() {
                       </button>
                     )}
 
-                    {/* NEW MOBILE-ONLY: move left/right pills */}
+                    {/* MOBILE-ONLY: move left/right pills */}
                     {isMobile && (
                       <>
                         <button

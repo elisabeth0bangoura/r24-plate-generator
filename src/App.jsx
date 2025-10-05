@@ -21,6 +21,7 @@ const DESKTOP_MIN = 884;
 const MOBILE_CAP = { S: 150, M: 165, L: 180, T: 200 };
 
 /* ======= Small reset + light animations (bonus) ======= */
+/* >>> MOBILE TEXT COLOR FIX added at the end of this block <<< */
 function GlobalStyles() {
   return (
     <style>{`
@@ -56,6 +57,26 @@ function GlobalStyles() {
       /* Respect reduced motion */
       @media (prefers-reduced-motion: reduce) {
         .plate-card, .plate-view, .plate-view > div { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+      }
+
+      /* ===========================
+         MOBILE-ONLY TEXT COLOR FIX
+         iOS Safari dark mode can turn input text white.
+         Force light scheme + black text on mobile only.
+         =========================== */
+      @media (max-width: ${DESKTOP_MIN - 1}px) {
+        html, body { color-scheme: light; } /* stop dark form theming */
+        input, select, textarea, button {
+          color: #000 !important;
+          -webkit-text-fill-color: #000; /* iOS */
+          background-color: #fff;
+          caret-color: #000;
+        }
+        ::placeholder { color: #6B7280; opacity: 1; }
+        input:-webkit-autofill {
+          -webkit-text-fill-color: #000;
+          box-shadow: 0 0 0px 1000px #fff inset; /* keep white bg */
+        }
       }
     `}</style>
   );
@@ -523,7 +544,7 @@ export default function App() {
       const availW = Math.max(1, rect.width);
       const availH = Math.max(1, rect.height);
 
-    if (isMobile) {
+      if (isMobile) {
         const sW = availW / naturalStageWidth;
         const scaledH = naturalStageHeight * sW;
         const cap = bucket === "S" ? MOBILE_CAP.S : bucket === "M" ? MOBILE_CAP.M : bucket === "L" ? MOBILE_CAP.L : MOBILE_CAP.T;
@@ -882,7 +903,6 @@ export default function App() {
               minWidth: 0,
               minHeight: 0,
               height: "100%",
-            
               boxShadow: "0 1px 0 rgba(0,0,0,0.02) inset",
             }}>
             <div
@@ -912,12 +932,11 @@ export default function App() {
               paddingRight: isMobile ? 0 : 2,
               paddingTop: 0,
               minWidth: 0,
-               backgroundColor: "#fff",
+              backgroundColor: "#fff",
               alignContent: "start",
               gridAutoRows: "min-content",
             }}>
 
-              
             {!isMobile && (
               <h1 style={{ margin: 0, padding: 0, marginBottom: 15, fontSize: 24, color: "#000", lineHeight: 1.15 }}>
                 <span style={{ fontWeight: 700 }}>Maße</span>
@@ -1168,8 +1187,6 @@ export default function App() {
             </div>
           </section>
         </main>
-
-        
       </div>
     </>
   );

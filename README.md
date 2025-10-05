@@ -3,7 +3,7 @@
 > Responsive Plate Generator (React + Vite): configure multiple wall plates, 1 cm = 1 px real-scale preview, center-crop/contain, horizontal auto-mirror when total width > 300 cm, drag-reorder, per-plate panning, PNG/JPEG export, mobile-first and touch-friendly. Persists to `localStorage`.
 
 **Live demo:** https://YOUR-VERCEL-URL.vercel.app  
-**Repo:** [https://github.com/YOUR_GH_USER/r24-plate-generator](https://github.com/elisabeth0bangoura/r24-plate-generator)
+**Repo:** https://github.com/elisabeth0bangoura/r24-plate-generator
 
 ---
 

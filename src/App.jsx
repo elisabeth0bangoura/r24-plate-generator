@@ -326,7 +326,7 @@ function DimensionField({
     }
     const cm = fromDisplay(n, unit);
     if (cm < minCm || cm > maxCm) {
-      setError(`Außerhalb Bereich: ${minCm}–${maxCm} cm.`);
+      setError(`Außerhalb Bereich: ${minCm} – ${maxCm} cm.`);
       return { ok: false, valueCm: null };
     }
     setError(null);
@@ -358,8 +358,8 @@ function DimensionField({
             }}
           >
             <div style={{ fontSize: labelFs, fontWeight: 800, color: "#111827", lineHeight: 1.1 }}>{label}</div>
-            <span style={{ fontSize: hintFs, color: "#000" }}>
-              {minCm}–{maxCm} cm
+            <span style={{ fontSize: hintFs, color: "#000",  fontWeight: 600}}>
+              {minCm} – {maxCm} cm
             </span>
           </div>
         ) : (
@@ -367,7 +367,7 @@ function DimensionField({
             <label htmlFor={id} style={{ fontSize: labelFs, fontWeight: 700, color: "#111827" }}>
               {label}
             </label>
-            <span style={{ fontSize: hintFs, color: "#000", fontWeight: 500 }}>
+            <span style={{ fontSize: hintFs, color: "#000", fontWeight: 600 }}>
               {minCm} – {maxCm} cm
             </span>
           </div>

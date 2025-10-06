@@ -21,7 +21,6 @@ const DESKTOP_MIN = 884;
 const MOBILE_CAP = { S: 150, M: 165, L: 180, T: 200 };
 
 /* ======= Small reset + light animations (bonus) ======= */
-/* >>> MOBILE TEXT COLOR FIX added at the end of this block (buttons excluded) <<< */
 function GlobalStyles() {
   return (
     <style>{`
@@ -33,23 +32,11 @@ function GlobalStyles() {
       input:disabled, button:disabled { cursor: not-allowed; opacity: .6; }
       input[type="range"]:disabled { filter: grayscale(.6); }
 
-      /* ==== Bonus animations ==== */
-      @keyframes plate-in {
-        from { opacity: 0; transform: scale(.985); }
-        to { opacity: 1; transform: scale(1); }
-      }
-      @keyframes plate-out {
-        from { opacity: 1; transform: scale(1); }
-        to { opacity: 0; transform: scale(.985); }
-      }
+      @keyframes plate-in { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: scale(1); } }
+      @keyframes plate-out { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(.985); } }
 
-      .plate-card, .plate-view {
-        animation: plate-in .22s ease both;
-        will-change: transform, opacity;
-      }
-      .plate-card.leaving, .plate-view.leaving {
-        animation: plate-out .18s ease both;
-      }
+      .plate-card, .plate-view { animation: plate-in .22s ease both; will-change: transform, opacity; }
+      .plate-card.leaving, .plate-view.leaving { animation: plate-out .18s ease both; }
       .plate-view { transition: width .18s ease; }
       .plate-view > div { transition: width .18s ease, height .18s ease, padding .18s ease, border-radius .12s ease; }
 
@@ -74,7 +61,6 @@ function GlobalStyles() {
           box-shadow: 0 0 0px 1000px #fff inset;
         }
 
-        /* Hide horizontal scrollbar but keep swipe scrolling */
         .mobileStageWrap {
           -ms-overflow-style: none;
           scrollbar-width: none;
@@ -289,6 +275,16 @@ const mobileDeleteBtn = (disabled) => ({
 });
 
 /* ======= Inputs ======= */
+
+/** parse CSS padding shorthand (px) into {top,right,bottom,left} numbers */
+function parsePadding(pad) {
+  const nums = pad.split(" ").map((s) => parseInt(s.replace("px", ""), 10));
+  if (nums.length === 1) return { top: nums[0], right: nums[0], bottom: nums[0], left: nums[0] };
+  if (nums.length === 2) return { top: nums[0], right: nums[1], bottom: nums[0], left: nums[1] };
+  if (nums.length === 3) return { top: nums[0], right: nums[1], bottom: nums[2], left: nums[1] };
+  return { top: nums[0], right: nums[1], bottom: nums[2], left: nums[3] };
+}
+
 function DimensionField({
   id,
   label,
@@ -304,7 +300,11 @@ function DimensionField({
 }) {
   const [text, setText] = useState(String(round2(valueDisplay)));
   const [error, setError] = useState(null);
+  const [focused, setFocused] = useState(false); // focus flag for grey "pill"
   const lastValidRef = useRef(String(round2(valueDisplay)));
+  const inputRef = useRef(null);
+  const [textWidth, setTextWidth] = useState(0);
+
   useEffect(() => {
     const s = String(round2(valueDisplay));
     setText(s);
@@ -333,48 +333,86 @@ function DimensionField({
     return { ok: true, valueCm: cm };
   };
 
+  // Preview in mm
   const parsed = parseLocaleNumber(text);
   const cmPreview = Number.isFinite(parsed) ? fromDisplay(parsed, unit) : fromDisplay(valueDisplay, unit);
   const mmPreview = Math.round(cmPreview * 10);
 
-  const valueFont = size === "mobile" ? (compact ? "clamp(14px,4.2vw,18px)" : "clamp(16px,4.8vw,20px)") : compact ? 16 : 20;
-  const inputPad = size === "mobile" ? (compact ? "8px 38px 8px 10px" : "10px 40px 10px 12px") : compact ? "6px 40px 6px 10px" : "8px 44px 8px 12px";
-  const labelFs = size === "mobile" ? (compact ? "clamp(11px,3vw,12px)" : "clamp(11px,3.2vw,13px)") : compact ? 12 : 13;
-  const hintFs = size === "mobile" ? "clamp(9px,2.6vw,11px)" : compact ? 10 : 11;
+  // Sizing
+  const valueFont = size === "mobile" ? (compact ? "clamp(14px,4.2vw,18px)" : "clamp(16px,4.8vw,20px)") : compact ? "16px" : "20px";
+  const inputPad =
+    size === "mobile"
+      ? compact
+        ? "8px 44px 8px 12px"
+        : "10px 46px 10px 12px"
+      : compact
+      ? "6px 44px 6px 10px"
+      : "8px 46px 8px 12px";
+  const labelFs = size === "mobile" ? (compact ? "clamp(11px,3vw,12px)" : "clamp(11px,3.2vw,13px)") : compact ? "12px" : "13px";
+  const hintFs = size === "mobile" ? "clamp(9px,2.6vw,11px)" : compact ? "10px" : "11px";
+  const pads = parsePadding(inputPad);
+
+  // Measure current text width to size the grey highlight
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const cs = getComputedStyle(el);
+    ctx.font = `${cs.fontStyle} ${cs.fontVariant} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+    const w = ctx.measureText(text || "0").width;
+    setTextWidth(Math.ceil(w));
+  }, [text, valueFont, size, compact]);
 
   return (
     <div style={{ display: "grid", gap: compact ? 3 : 5, minWidth: 0 }}>
       {!hideHeader &&
         (size === "mobile" ? (
-          /* ===== MOBILE HEADER: remove 'cm' after title and spread title & range ===== */
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "baseline",
-              whiteSpace: "nowrap",
-              width: "100%",
-              gap: 16,
-            }}
-          >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", whiteSpace: "nowrap", width: "100%", gap: 16 }}>
             <div style={{ fontSize: labelFs, fontWeight: 800, color: "#111827", lineHeight: 1.1 }}>{label}</div>
-            <span style={{ fontSize: hintFs, color: "#000",  fontWeight: 600}}>
-              {minCm} – {maxCm} cm
-            </span>
+            <span style={{ fontSize: hintFs, color: "#000", fontWeight: 600 }}>{minCm} – {maxCm} cm</span>
           </div>
         ) : (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "end" }}>
-            <label htmlFor={id} style={{ fontSize: labelFs, fontWeight: 700, color: "#111827" }}>
-              {label}
-            </label>
-            <span style={{ fontSize: hintFs, color: "#000", fontWeight: 600 }}>
-              {minCm} – {maxCm} cm
-            </span>
+            <label htmlFor={id} style={{ fontSize: labelFs, fontWeight: 700, color: "#111827" }}>{label}</label>
+            <span style={{ fontSize: hintFs, color: "#000", fontWeight: 600 }}>{minCm} – {maxCm} cm</span>
           </div>
         ))}
 
+      {/* Input container */}
       <div style={{ position: "relative" }}>
+        {/* Base white fill under the transparent input (keeps normal look) */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "#FFFFFF",
+            borderRadius: 12,
+            pointerEvents: "none",
+            zIndex: 0,
+          }}
+        />
+        {/* Focus-only grey highlighter behind the typed number (inside the input) */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            top: 3,
+            bottom: 3,
+            left: pads.left,
+            width: focused ? Math.max(28, textWidth + 10) : 0,
+            background: focused ? "#ECECEC" : "transparent",
+            borderRadius: 7,
+            transition: "width 100ms ease, background 120ms ease",
+            pointerEvents: "none",
+            zIndex: 1,
+          }}
+        />
+        {/* The actual input (transparent bg so above layers show through) */}
         <input
+          ref={inputRef}
           id={id}
           type="text"
           value={text}
@@ -383,6 +421,7 @@ function DimensionField({
             setText(v);
             validate(v);
           }}
+          onFocus={() => setFocused(true)}
           onBlur={() => {
             const res = validate(text);
             if (res.ok && res.valueCm != null) {
@@ -392,28 +431,32 @@ function DimensionField({
               setText(lastValidRef.current);
               setError(null);
             }
+            setFocused(false);
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter") e.currentTarget.blur();
           }}
           style={{
+            position: "relative",
+            zIndex: 2,
             width: "100%",
             minWidth: size === "mobile" ? minInput : undefined,
-            textAlign: size === "mobile" ? "center" : "left",
+            textAlign: "left",
             borderRadius: 12,
             border: `1px solid ${error ? "#FCA5A5" : "#E5E7EB"}`,
             padding: inputPad,
             fontSize: valueFont,
             outline: "none",
-            background: "white",
+            background: "transparent",
             fontWeight: 800,
-            ...(size === "mobile"
-              ? { color: "#000", WebkitTextFillColor: "#000", caretColor: "#000", backgroundColor: "#fff" }
-              : {}),
+            color: "#000",
+            WebkitTextFillColor: "#000",
+            caretColor: "#000",
           }}
           placeholder={`${minCm}–${maxCm}`}
           inputMode="decimal"
         />
+        {/* Unit chip INSIDE the input on the right. Turns grey while focused. */}
         <span
           style={{
             position: "absolute",
@@ -423,11 +466,14 @@ function DimensionField({
             display: "flex",
             alignItems: "center",
             padding: "0 6px",
-            background: "#FFFFFF",
+            background: focused ? "#ECECEC" : "#FFFFFF",
             borderRadius: 7,
             fontSize: 16,
+            fontWeight: 600,
             color: "#000",
             pointerEvents: "none",
+            transition: "background 120ms ease",
+            zIndex: 3,
           }}
         >
           {unit}
@@ -465,9 +511,9 @@ export default function App() {
 
   const fitWrapRef = useRef(null);
   const [fitScale, setFitScale] = useState(1);
-  const [wrapHeight, setWrapHeight] = useState("auto");
 
-  const [stripUrl, setStripUrl] = useState(null);
+  // NOTE: keep line (no deletion), but avoid duplicate declaration:
+  const [__unusedStrip] = useState(null);
 
   /* Per-plate panning (element-scoped only) */
   const panRef = useRef({ active: false, id: null, startX: 0, startY: 0, startPanX: 0, startPanY: 0 });
@@ -539,10 +585,10 @@ export default function App() {
   }, [motifUrl]);
 
   /* layout math (1 cm = 1 px) */
-  const totalWidthCmOnly = useMemo(() => plates.reduce((w, p) => w + p.widthCm, 0), [plates]);
+  const platesWidth = useMemo(() => plates.reduce((w, p) => w + p.widthCm, 0), [plates]);
   const maxHeightCm = useMemo(() => Math.max(...plates.map((p) => p.heightCm), 1), [plates]);
 
-  const naturalStageWidth = Math.max(1, totalWidthCmOnly + (plates.length - 1) * 8 + (isMobile ? 8 : canvasPadPx) * 2);
+  const naturalStageWidth = Math.max(1, platesWidth + (plates.length - 1) * 8 + (isMobile ? 8 : canvasPadPx) * 2);
   const naturalStageHeight = Math.max(1, maxHeightCm + (isMobile ? 8 : canvasPadPx) * 2);
 
   /* ======= FIT ======= */
@@ -558,18 +604,19 @@ export default function App() {
       if (isMobile) {
         const sW = availW / naturalStageWidth;
         const scaledH = naturalStageHeight * sW;
-        const cap = bucket === "S" ? MOBILE_CAP.S : bucket === "M" ? MOBILE_CAP.M : bucket === "L" ? MOBILE_CAP.L : MOBILE_CAP.T;
+        const cap =
+          bucket === "S" ? MOBILE_CAP.S :
+          bucket === "M" ? MOBILE_CAP.M :
+          bucket === "L" ? MOBILE_CAP.L : MOBILE_CAP.T;
         const targetH = Math.min(cap, Math.round(scaledH));
         const sH = targetH / naturalStageHeight;
         const scale = Math.min(sW, sH);
         setFitScale(scale);
-        setWrapHeight(Math.round(naturalStageHeight * scale));
       } else {
         const sW = availW / naturalStageWidth;
         const sH = availH / naturalStageHeight;
         const scale = Math.min(sW, sH);
         setFitScale(scale);
-        setWrapHeight("100%");
       }
     };
 
@@ -577,10 +624,11 @@ export default function App() {
     ro.observe(wrap);
     calc();
     return () => ro.disconnect();
-  }, [naturalStageWidth, naturalStageHeight, isMobile, bucket]);
+  }, [naturalStageWidth, naturalStageHeight, isMobile, bucket, canvasPadPx]);
 
   /* mirrored strip */
   const MIRROR_PERIOD_CM = 300;
+  const [stripUrl, setStripUrl] = useState(null);
   useEffect(() => {
     if (!imgMeta || !motifUrl) return;
     const paneW = MIRROR_PERIOD_CM;
@@ -653,9 +701,9 @@ export default function App() {
   }
 
   /* ======= Stage (global bg sizing) ======= */
-  const needsMirror = totalWidthCmOnly > 300;
+  const needsMirror = platesWidth > 300;
   const bgGap = 8;
-  const stageW = Math.max(1, totalWidthCmOnly);
+  const stageW = Math.max(1, platesWidth);
   const stageH = Math.max(1, maxHeightCm);
 
   let sharedBgW = stageW, sharedBgH = stageH;
@@ -709,15 +757,7 @@ export default function App() {
         userSelect: activePanId ? "none" : "auto",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          gap: bgGap,
-          flexWrap: "nowrap",
-          height: "100%",
-          alignItems: "flex-end",
-        }}
-      >
+      <div style={{ display: "flex", gap: bgGap, flexWrap: "nowrap", height: "100%", alignItems: "flex-end" }}>
         {plates.map((p, idx) => {
           const xLeftCm = plates.slice(0, idx).reduce((acc, prev) => acc + prev.widthCm, 0) + idx * bgGap;
 
@@ -774,11 +814,7 @@ export default function App() {
 
             return (
               <div key={p.id} style={{ display: "flex", justifyContent: "center", alignItems: "flex-end", height: "100%" }}>
-                <div
-                  aria-label={p.label}
-                  className={`plate-view${leavingIds.has(p.id) ? " leaving" : ""}`}
-                  style={{ position: "relative", width: p.widthCm, aspectRatio: `${p.widthCm}/${p.heightCm}` }}
-                >
+                <div aria-label={p.label} className={`plate-view${leavingIds.has(p.id) ? " leaving" : ""}`} style={{ position: "relative", width: p.widthCm, aspectRatio: `${p.widthCm}/${p.heightCm}` }}>
                   <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: corner }}>
                     <div
                       onPointerDown={onPointerDown}
@@ -818,11 +854,7 @@ export default function App() {
 
           return (
             <div key={p.id} style={{ display: "flex", justifyContent: "center", alignItems: "flex-end", height: "100%" }}>
-              <div
-                aria-label={p.label}
-                className={`plate-view${leavingIds.has(p.id) ? " leaving" : ""}`}
-                style={{ position: "relative", width: p.widthCm, aspectRatio: `${p.widthCm}/${p.heightCm}` }}
-              >
+              <div aria-label={p.label} className={`plate-view${leavingIds.has(p.id) ? " leaving" : ""}`} style={{ position: "relative", width: p.widthCm, aspectRatio: `${p.widthCm}/${p.heightCm}` }}>
                 <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: corner }}>
                   <div
                     onPointerDown={onPointerDown}
@@ -1044,7 +1076,7 @@ export default function App() {
                       });
                     }}
                     onAnimationEnd={(e) => {
-                      const name = e.animationName || (e.nativeEvent && e.nativeEvent.animationName);
+                      const name = (e.animationName || (e.nativeEvent && e.nativeEvent.animationName));
                       if (leaving && name === "plate-out") finalizeRemove(p.id);
                     }}
                   >
@@ -1099,17 +1131,7 @@ export default function App() {
                         hidePreview={isFirst}
                       />
 
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          alignSelf: "stretch",
-                          height: "100%",
-                          fontSize: 19,
-                          color: "#000",
-                        }}
-                      >
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", alignSelf: "stretch", height: "100%", fontSize: 19, color: "#000" }}>
                         ×
                       </div>
 
@@ -1130,22 +1152,10 @@ export default function App() {
                       {/* DESKTOP: reorder + delete controls */}
                       {!isMobile && (
                         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 6 }}>
-                          <button
-                            onClick={() => movePlateIndex(idx, Math.max(0, idx - 1))}
-                            disabled={idx === 0}
-                            aria-label="Nach links verschieben"
-                            title="Nach links verschieben"
-                            style={circleIconBtn(idx === 0)}
-                          >
+                          <button onClick={() => movePlateIndex(idx, Math.max(0, idx - 1))} disabled={idx === 0} aria-label="Nach links verschieben" title="Nach links verschieben" style={circleIconBtn(idx === 0)}>
                             <ChevronLeft strokeWidth={4} size={14} />
                           </button>
-                          <button
-                            onClick={() => movePlateIndex(idx, Math.min(plates.length - 1, idx + 1))}
-                            disabled={idx === plates.length - 1}
-                            aria-label="Nach rechts verschieben"
-                            title="Nach rechts verschieben"
-                            style={circleIconBtn(idx === plates.length - 1)}
-                          >
+                          <button onClick={() => movePlateIndex(idx, Math.min(plates.length - 1, idx + 1))} disabled={idx === plates.length - 1} aria-label="Nach rechts verschieben" title="Nach rechts verschieben" style={circleIconBtn(idx === plates.length - 1)}>
                             <ChevronRight strokeWidth={4} size={14} />
                           </button>
                           <button
@@ -1181,31 +1191,15 @@ export default function App() {
               {/* ======= MOBILE GLOBAL CHEVRONS + ADD BUTTON ROW ======= */}
               {isMobile && (
                 <div style={{ display: "grid", gridTemplateColumns: "32px 1fr 32px", alignItems: "center", gap: 10, marginTop: 6 }}>
-                  <button
-                    onClick={rotateLeftAll}
-                    disabled={!canRotate}
-                    aria-label="Alle nach links rotieren"
-                    title="Alle nach links rotieren"
-                    style={circleIconBtn(!canRotate)}
-                  >
+                  <button onClick={rotateLeftAll} disabled={!canRotate} aria-label="Alle nach links rotieren" title="Alle nach links rotieren" style={circleIconBtn(!canRotate)}>
                     <ChevronLeft strokeWidth={4} size={16} />
                   </button>
 
-                  <button
-                    onClick={() => canAdd && setPlates((p) => [...p, makePlate(p.length + 1)])}
-                    disabled={!canAdd}
-                    style={{ ...btnAdd(), opacity: canAdd ? 1 : 0.5, cursor: canAdd ? "pointer" : "not-allowed" }}
-                  >
+                  <button onClick={() => canAdd && setPlates((p) => [...p, makePlate(p.length + 1)])} disabled={!canAdd} style={{ ...btnAdd(), opacity: canAdd ? 1 : 0.5, cursor: canAdd ? "pointer" : "not-allowed" }}>
                     Rückwand hinzufügen +
                   </button>
 
-                  <button
-                    onClick={rotateRightAll}
-                    disabled={!canRotate}
-                    aria-label="Alle nach rechts rotieren"
-                    title="Alle nach rechts rotieren"
-                    style={circleIconBtn(!canRotate)}
-                  >
+                  <button onClick={rotateRightAll} disabled={!canRotate} aria-label="Alle nach rechts rotieren" title="Alle nach rechts rotieren" style={circleIconBtn(!canRotate)}>
                     <ChevronRight strokeWidth={4} size={16} />
                   </button>
                 </div>
@@ -1213,11 +1207,7 @@ export default function App() {
 
               {/* DESKTOP add button */}
               {!isMobile && (
-                <button
-                  onClick={() => canAdd && setPlates((p) => [...p, makePlate(p.length + 1)])}
-                  disabled={!canAdd}
-                  style={{ ...btnAdd(), width: "60%", opacity: canAdd ? 1 : 0.5, cursor: canAdd ? "pointer" : "not-allowed", marginTop: 6 }}
-                >
+                <button onClick={() => canAdd && setPlates((p) => [...p, makePlate(p.length + 1)])} disabled={!canAdd} style={{ ...btnAdd(), width: "60%", opacity: canAdd ? 1 : 0.5, cursor: canAdd ? "pointer" : "not-allowed", marginTop: 6 }}>
                   Rückwand hinzufügen +
                 </button>
               )}

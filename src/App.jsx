@@ -253,7 +253,7 @@ const indexBadgeStyle = (size = 25, isFirst = false) => {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    background: isFirst ? "#FFFFFF" : "#000000",
+    background: isFirst ? "transparent" : "#000000",
     color: isFirst ? "#000000" : "#FFFFFF",
     border: "1px solid #000000",
     boxShadow: "0 0 0 3px #FFFFFF",

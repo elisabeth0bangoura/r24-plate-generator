@@ -58,7 +58,7 @@ function GlobalStyles() {
       }
 
       /* ===========================
-         MOBILE-ONLY TEXT COLOR FIX
+         MOBILE-ONLY FIXES
          =========================== */
       @media (max-width: ${DESKTOP_MIN - 1}px) {
         html, body { color-scheme: light; }
@@ -73,6 +73,15 @@ function GlobalStyles() {
           -webkit-text-fill-color: #000;
           box-shadow: 0 0 0px 1000px #fff inset;
         }
+
+        /* Hide horizontal scrollbar but keep swipe scrolling */
+        .mobileStageWrap {
+          -ms-overflow-style: none;       /* IE/Edge */
+          scrollbar-width: none;          /* Firefox */
+          overscroll-behavior-x: contain; /* no glow/bounce */
+          -webkit-overflow-scrolling: touch;
+        }
+        .mobileStageWrap::-webkit-scrollbar { display: none; } /* Chrome/Safari */
       }
     `}</style>
   );
@@ -889,7 +898,7 @@ export default function App() {
           <section
             style={{
               borderRadius: 10,
-              background: "linear-gradient(180deg, #FFFFFF 0%, #E6E8EE 100%)",
+              background: "linear-gradient(-190deg, #FFFFFF 0%, #DDDDDD 100%)",
               padding: 16,
               display: "flex",
               flexDirection: "column",
@@ -897,22 +906,29 @@ export default function App() {
               minHeight: 0,
               height: "100%",
               boxShadow: "0 1px 0 rgba(0,0,0,0.02) inset",
-            }}>
+              ...(isMobile ? { height: 300 } : {}),
+            }}
+          >
             <div
               ref={fitWrapRef}
+              className={isMobile ? "mobileStageWrap" : undefined}
               style={{
                 position: "relative",
-                height: isMobile ? wrapHeight : "100%",
+                height: "100%",
                 width: "100%",
-                overflow: "hidden",
+                overflowX: isMobile ? "auto" : "hidden", /* still scrollable, now invisible */
+                overflowY: "hidden",
                 margin: "0 auto",
                 display: "flex",
                 alignItems: isMobile ? "center" : "flex-start",
                 justifyContent: "center",
                 flex: 1,
                 minHeight: 0,
-              }}>
-              <div style={{ transform: `scale(${fitScale})`, transformOrigin: "top center", width: naturalStageWidth, height: naturalStageHeight }}>{Stage}</div>
+              }}
+            >
+              <div style={{ transform: `scale(${fitScale})`, transformOrigin: "top center", width: naturalStageWidth, height: naturalStageHeight }}>
+                {Stage}
+              </div>
             </div>
           </section>
 
@@ -928,8 +944,8 @@ export default function App() {
               backgroundColor: "#fff",
               alignContent: "start",
               gridAutoRows: "min-content",
-            }}>
-
+            }}
+          >
             {!isMobile && (
               <h1 style={{ margin: 0, padding: 0, marginBottom: 15, fontSize: 24, color: "#000", lineHeight: 1.15 }}>
                 <span style={{ fontWeight: 700 }}>Maße</span>
@@ -996,7 +1012,8 @@ export default function App() {
                     className={`plate-card${leaving ? " leaving" : ""}`}
                     style={{
                       ...card(isMobile ? 10 : 12),
-                      paddingTop: isMobile ? 22 : 12,
+                      paddingTop: 12, /* keep centered; let badge overflow */
+                      overflow: "visible",
                       cursor: "grab",
                       ...(desktopCardMargin || {}),
                     }}

@@ -21,7 +21,7 @@ const DESKTOP_MIN = 884;
 const MOBILE_CAP = { S: 150, M: 165, L: 180, T: 200 };
 
 /* ======= Small reset + light animations (bonus) ======= */
-/* >>> MOBILE TEXT COLOR FIX added at the end of this block <<< */
+/* >>> MOBILE TEXT COLOR FIX added at the end of this block (buttons excluded) <<< */
 function GlobalStyles() {
   return (
     <style>{`
@@ -53,19 +53,16 @@ function GlobalStyles() {
       .plate-view { transition: width .18s ease; }
       .plate-view > div { transition: width .18s ease, height .18s ease, padding .18s ease, border-radius .12s ease; }
 
-      /* Respect reduced motion */
       @media (prefers-reduced-motion: reduce) {
         .plate-card, .plate-view, .plate-view > div { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
       }
 
       /* ===========================
          MOBILE-ONLY TEXT COLOR FIX
-         iOS Safari dark mode can turn input text white.
-         Force light scheme + black text on mobile only.
          =========================== */
       @media (max-width: ${DESKTOP_MIN - 1}px) {
         html, body { color-scheme: light; }
-        input, select, textarea, button {
+        input, select, textarea {
           color: #000 !important;
           -webkit-text-fill-color: #000;
           background-color: #fff;
@@ -132,7 +129,7 @@ const CM = "cm";
 const IN = "in";
 const CM_PER_IN = 2.54;
 const toDisplay = (cm, unit) => (unit === IN ? cm / CM_PER_IN : cm);
-const fromDisplay = (val, unit) => (unit === IN ? val * CM_PER_IN : val);
+const fromDisplay = (val, unit) => (val === null ? null : unit === IN ? val * CM_PER_IN : val);
 
 /* ======= Model ======= */
 const makePlate = (i = 1) => ({
@@ -168,15 +165,14 @@ function btn(kind = "outline", disabled = false) {
     border: "1px solid #E5E7EB",
     background: "white",
   };
-  if (kind === "solid") return { ...base, border: "none", background: "black", color: "white" };
+  if (kind === "solid")
+    return { ...base, border: "none", background: "black", color: "white", WebkitTextFillColor: "white" };
   if (kind === "danger") return { ...base, border: "1px solid #FECACA", color: "#B91C1C", background: "#FEF2F2" };
   return base;
 }
 
 const btnAdd = () => ({
-  width: "auto",
-  justifySelf: "end",
-  marginRight: 0,
+  width: "100%",
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
@@ -189,6 +185,21 @@ const btnAdd = () => ({
   fontSize: 15,
   fontWeight: 600,
   cursor: "pointer",
+});
+
+const circleIconBtn = (disabled) => ({
+  width: 32,
+  height: 32,
+  borderRadius: "9999px",
+  padding: 0,
+  lineHeight: 0,
+  display: "grid",
+  placeItems: "center",
+  border: `1px solid ${disabled ? "#E5E7EB" : "#D1D5DB"}`,
+  background: "#FFFFFF",
+  color: "#111827",
+  cursor: disabled ? "not-allowed" : "pointer",
+  boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
 });
 
 /* ======= BADGES ======= */
@@ -266,26 +277,6 @@ const mobileDeleteBtn = (disabled) => ({
   boxShadow: "0 1px 0 rgba(0,0,0,0.03) inset",
   WebkitAppearance: "none",
   appearance: "none",
-});
-
-/* NEW: Mobile reorder pills (MOBILE ONLY) */
-const mobileReorderBtn = (side, disabled) => ({
-  position: "absolute",
-  bottom: -12,
-  [side]: -12,
-  width: 25,
-  height: "auto",
-  aspectRatio: "1 / 1",
-  borderRadius: "9999px",
-  display: "grid",
-  placeItems: "center",
-  padding: 0,
-  lineHeight: 0,
-  zIndex: 2,
-  border: `1px solid ${disabled ? "#E5E7EB" : "#D1D5DB"}`,
-  background: "#FFFFFF",
-  cursor: disabled ? "not-allowed" : "pointer",
-  boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
 });
 
 /* ======= Inputs ======= */
@@ -398,15 +389,8 @@ function DimensionField({
             outline: "none",
             background: "white",
             fontWeight: 800,
-
-            // ✅ Force black text on iOS while editing (mobile only)
             ...(size === "mobile"
-              ? {
-                  color: "#000",
-                  WebkitTextFillColor: "#000",
-                  caretColor: "#000",
-                  backgroundColor: "#fff",
-                }
+              ? { color: "#000", WebkitTextFillColor: "#000", caretColor: "#000", backgroundColor: "#fff" }
               : {}),
           }}
           placeholder={`${minCm}–${maxCm}`}
@@ -457,7 +441,7 @@ export default function App() {
 
   const [motifUrl, setMotifUrl] = useState(null);
   const [imgMeta, setImgMeta] = useState(null);
-  const [bgContain, setBgContain] = useState(false); // default to crop
+  const [bgContain, setBgContain] = useState(false);
 
   const [isExporting, setIsExporting] = useState(false);
 
@@ -687,6 +671,12 @@ export default function App() {
     });
   }
 
+  // Global rotations (used by bottom chevrons)
+  const rotateLeftAll = () =>
+    setPlates((arr) => (arr.length < 2 ? arr : [...arr.slice(1), arr[0]].map((pp, i) => ({ ...pp, label: `Plate ${i + 1}` }))));
+  const rotateRightAll = () =>
+    setPlates((arr) => (arr.length < 2 ? arr : [arr[arr.length - 1], ...arr.slice(0, -1)].map((pp, i) => ({ ...pp, label: `Plate ${i + 1}` }))));
+
   const Stage = (
     <div
       id="stage-root"
@@ -849,6 +839,7 @@ export default function App() {
 
   const rightFraction = Math.max(0, 1 - LEFT_COL_FRACTION);
   const canAdd = plates.length < MAX_PLATES;
+  const canRotate = plates.length > 1;
 
   return (
     <>
@@ -999,9 +990,6 @@ export default function App() {
 
                 const leaving = leavingIds.has(p.id);
 
-                const canMoveLeft = isMobile && idx > 0;
-                const canMoveRight = isMobile && idx < plates.length - 1;
-
                 return (
                   <div
                     key={p.id}
@@ -1012,7 +1000,7 @@ export default function App() {
                       cursor: "grab",
                       ...(desktopCardMargin || {}),
                     }}
-                    draggable
+                    draggable={!isMobile}
                     onDragStart={(e) => {
                       e.dataTransfer?.setData("text/plain", String(idx));
                       e.dataTransfer?.setDragImage?.(e.currentTarget, 20, 20);
@@ -1051,39 +1039,6 @@ export default function App() {
                       >
                         <Minus strokeWidth={5} size={12} color="#FF5345" />
                       </button>
-                    )}
-
-                    {/* MOBILE-ONLY: move left/right pills */}
-                    {isMobile && (
-                      <>
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (canMoveLeft) movePlateIndex(idx, idx - 1);
-                          }}
-                          disabled={!canMoveLeft}
-                          aria-label="Nach links verschieben"
-                          title="Nach links verschieben"
-                          style={mobileReorderBtn("left", !canMoveLeft)}
-                        >
-                          <ChevronLeft strokeWidth={4} size={12} />
-                        </button>
-
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (canMoveRight) movePlateIndex(idx, idx + 1);
-                          }}
-                          disabled={!canMoveRight}
-                          aria-label="Nach rechts verschieben"
-                          title="Nach rechts verschieben"
-                          style={mobileReorderBtn("right", !canMoveRight)}
-                        >
-                          <ChevronRight strokeWidth={4} size={12} />
-                        </button>
-                      </>
                     )}
 
                     <div
@@ -1146,8 +1101,27 @@ export default function App() {
                         hidePreview={isFirst}
                       />
 
+                      {/* DESKTOP: reorder + delete controls */}
                       {!isMobile && (
-                        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
+                        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 6 }}>
+                          <button
+                            onClick={() => movePlateIndex(idx, Math.max(0, idx - 1))}
+                            disabled={idx === 0}
+                            aria-label="Nach links verschieben"
+                            title="Nach links verschieben"
+                            style={circleIconBtn(idx === 0)}
+                          >
+                            <ChevronLeft strokeWidth={4} size={14} />
+                          </button>
+                          <button
+                            onClick={() => movePlateIndex(idx, Math.min(plates.length - 1, idx + 1))}
+                            disabled={idx === plates.length - 1}
+                            aria-label="Nach rechts verschieben"
+                            title="Nach rechts verschieben"
+                            style={circleIconBtn(idx === plates.length - 1)}
+                          >
+                            <ChevronRight strokeWidth={4} size={14} />
+                          </button>
                           <button
                             onClick={() => (canDelete ? requestRemove(p.id) : undefined)}
                             disabled={!canDelete}
@@ -1178,13 +1152,49 @@ export default function App() {
                 );
               })}
 
-              <button
-                onClick={() => canAdd && setPlates((p) => [...p, makePlate(p.length + 1)])}
-                disabled={!canAdd}
-                style={{ ...btnAdd(), width: isMobile ? "100%" : "60%", opacity: canAdd ? 1 : 0.5, cursor: canAdd ? "pointer" : "not-allowed" }}
-              >
-                Rückwand hinzufügen +
-              </button>
+              {/* ======= MOBILE GLOBAL CHEVRONS + ADD BUTTON ROW ======= */}
+              {isMobile && (
+                <div style={{ display: "grid", gridTemplateColumns: "32px 1fr 32px", alignItems: "center", gap: 10, marginTop: 6 }}>
+                  <button
+                    onClick={rotateLeftAll}
+                    disabled={!canRotate}
+                    aria-label="Alle nach links rotieren"
+                    title="Alle nach links rotieren"
+                    style={circleIconBtn(!canRotate)}
+                  >
+                    <ChevronLeft strokeWidth={4} size={16} />
+                  </button>
+
+                  <button
+                    onClick={() => canAdd && setPlates((p) => [...p, makePlate(p.length + 1)])}
+                    disabled={!canAdd}
+                    style={{ ...btnAdd(), opacity: canAdd ? 1 : 0.5, cursor: canAdd ? "pointer" : "not-allowed" }}
+                  >
+                    Rückwand hinzufügen +
+                  </button>
+
+                  <button
+                    onClick={rotateRightAll}
+                    disabled={!canRotate}
+                    aria-label="Alle nach rechts rotieren"
+                    title="Alle nach rechts rotieren"
+                    style={circleIconBtn(!canRotate)}
+                  >
+                    <ChevronRight strokeWidth={4} size={16} />
+                  </button>
+                </div>
+              )}
+
+              {/* DESKTOP add button */}
+              {!isMobile && (
+                <button
+                  onClick={() => canAdd && setPlates((p) => [...p, makePlate(p.length + 1)])}
+                  disabled={!canAdd}
+                  style={{ ...btnAdd(), width: "60%", opacity: canAdd ? 1 : 0.5, cursor: canAdd ? "pointer" : "not-allowed", marginTop: 6 }}
+                >
+                  Rückwand hinzufügen +
+                </button>
+              )}
             </div>
           </section>
         </main>

@@ -76,12 +76,12 @@ function GlobalStyles() {
 
         /* Hide horizontal scrollbar but keep swipe scrolling */
         .mobileStageWrap {
-          -ms-overflow-style: none;       /* IE/Edge */
-          scrollbar-width: none;          /* Firefox */
-          overscroll-behavior-x: contain; /* no glow/bounce */
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+          overscroll-behavior-x: contain;
           -webkit-overflow-scrolling: touch;
         }
-        .mobileStageWrap::-webkit-scrollbar { display: none; } /* Chrome/Safari */
+        .mobileStageWrap::-webkit-scrollbar { display: none; }
       }
     `}</style>
   );
@@ -346,9 +346,18 @@ function DimensionField({
     <div style={{ display: "grid", gap: compact ? 3 : 5, minWidth: 0 }}>
       {!hideHeader &&
         (size === "mobile" ? (
-          <div style={{ display: "flex", justifyContent: "center", alignItems: "baseline", gap: 8, whiteSpace: "nowrap" }}>
+          /* ===== MOBILE HEADER: remove 'cm' after title and spread title & range ===== */
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "baseline",
+              whiteSpace: "nowrap",
+              width: "100%",
+              gap: 16,
+            }}
+          >
             <div style={{ fontSize: labelFs, fontWeight: 800, color: "#111827", lineHeight: 1.1 }}>{label}</div>
-            <span style={{ fontSize: 9, color: "#000", verticalAlign: "super" }}>{unit}</span>
             <span style={{ fontSize: hintFs, color: "#000" }}>
               {minCm}–{maxCm} cm
             </span>
@@ -916,7 +925,7 @@ export default function App() {
                 position: "relative",
                 height: "100%",
                 width: "100%",
-                overflowX: isMobile ? "auto" : "hidden", /* still scrollable, now invisible */
+                overflowX: isMobile ? "auto" : "hidden",
                 overflowY: "hidden",
                 margin: "0 auto",
                 display: "flex",
@@ -1012,7 +1021,7 @@ export default function App() {
                     className={`plate-card${leaving ? " leaving" : ""}`}
                     style={{
                       ...card(isMobile ? 10 : 12),
-                      paddingTop: 12, /* keep centered; let badge overflow */
+                      paddingTop: 12,
                       overflow: "visible",
                       cursor: "grab",
                       ...(desktopCardMargin || {}),
